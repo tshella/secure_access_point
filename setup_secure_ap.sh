@@ -11,10 +11,10 @@ DNSMASQ_PID_FILE="/tmp/tshella_dnsmasq.pid"
 DNSMASQ_CONF="/tmp/tshella_dnsmasq.conf"
 PYTHON_PID_FILE="/tmp/tshella_python_server.pid"
 WEB_DIR="$(pwd)"
+DHCP_RANGE="192.168.50.100,192.168.50.200,12h"
 
 # === SECURITY ENHANCEMENTS ===
 detect_security_mode() {
-    # Check if hardware supports WPA3
     if iw list | grep -q "SAE"; then
         echo "🔒 Hardware supports WPA3, using enhanced security"
         SECURITY_MODE="wpa3"
@@ -27,12 +27,10 @@ detect_security_mode() {
 configure_security() {
     case $SECURITY_MODE in
         wpa3)
-            # WPA3-SAE with proper PMF settings
             sudo nmcli con modify "$CON_NAME" wifi-sec.key-mgmt sae
             sudo nmcli con modify "$CON_NAME" wifi-sec.pmf required
             ;;
         wpa2)
-            # WPA2-PSK with AES encryption
             sudo nmcli con modify "$CON_NAME" wifi-sec.key-mgmt wpa-psk
             sudo nmcli con modify "$CON_NAME" wifi-sec.proto rsn
             sudo nmcli con modify "$CON_NAME" wifi-sec.group ccmp
@@ -102,53 +100,73 @@ sudo nmcli con modify "$CON_NAME" wifi-sec.psk "$PASSPHRASE"
 # === ACTIVATE ACCESS POINT WITH RETRY ===
 echo "📶 Activating access point..."
 MAX_RETRIES=3
+ACTIVATED=false
+
 for ((i=1; i<=$MAX_RETRIES; i++)); do
     echo "  Attempt $i of $MAX_RETRIES..."
     if sudo nmcli con up "$CON_NAME"; then
+        ACTIVATED=true
         break
     fi
     
-    if [ $i -eq $MAX_RETRIES ]; then
-        echo "❌ All activation attempts failed!"
-        if [ "$SECURITY_MODE" == "wpa3" ]; then
-            echo "⚠️ Falling back to WPA2 due to WPA3 activation issues"
-            SECURITY_MODE="wpa2"
-            configure_security
-            sudo nmcli con up "$CON_NAME"
-        else
-            exit 1
-        fi
-    fi
-    
     # Reset interface before retry
-    echo "  Resetting interface before retry..."
+    echo "  Resetting interface..."
     sudo ip link set "$IFACE" down
     sleep 1
     sudo ip link set "$IFACE" up
     sleep 1
 done
 
-# Verify activation
-AP_STATE=$(nmcli -t -f GENERAL.STATE device show "$IFACE" | cut -d: -f2)
-if [[ "$AP_STATE" != "100 (connected)" ]]; then
-    echo "❌ Failed to activate access point! Current state: $AP_STATE"
-    exit 1
+if ! $ACTIVATED; then
+    if [ "$SECURITY_MODE" == "wpa3" ]; then
+        echo "⚠️ Falling back to WPA2 due to activation issues"
+        SECURITY_MODE="wpa2"
+        configure_security
+        sudo nmcli con up "$CON_NAME" || {
+            echo "❌ Critical error: Failed to activate access point"
+            exit 1
+        }
+    else
+        echo "❌ Critical error: Failed to activate access point"
+        exit 1
+    fi
+fi
+
+# Verify IP assignment
+echo "🔍 Verifying IP assignment..."
+if ! ip addr show "$IFACE" | grep -q "192.168.50.1"; then
+    echo "❌ IP not assigned! Manually setting..."
+    sudo ip addr add 192.168.50.1/24 dev "$IFACE"
 fi
 
 # === DNSMASQ FOR DHCP AND REDIRECT ===
 echo "📡 Starting dnsmasq..."
+
+# Create DHCP configuration
 cat <<EOF | sudo tee "$DNSMASQ_CONF" >/dev/null
 interface=$IFACE
 bind-interfaces
+except-interface=lo
 listen-address=192.168.50.1
-dhcp-range=192.168.50.10,192.168.50.100,12h
+dhcp-range=$DHCP_RANGE
+dhcp-option=option:router,192.168.50.1
+dhcp-option=option:dns-server,192.168.50.1
+dhcp-leasefile=/tmp/tshella_dnsmasq.leases
 address=/#/192.168.50.1
 no-resolv
 server=8.8.8.8
 server=8.8.4.4
 EOF
 
-sudo dnsmasq --conf-file="$DNSMASQ_CONF" --pid-file="$DNSMASQ_PID_FILE"
+# Start dnsmasq with lease file
+sudo dnsmasq --conf-file="$DNSMASQ_CONF" --pid-file="$DNSMASQ_PID_FILE" --leasefile-ro
+
+# Verify dnsmasq
+sleep 2
+if ! pgrep -f "dnsmasq.*$DNSMASQ_CONF" >/dev/null; then
+    echo "❌ dnsmasq failed to start! Check port conflicts"
+    exit 1
+fi
 
 # === WEB SERVER ===
 echo "🌐 Starting web server at http://192.168.50.1:8000..."
@@ -163,3 +181,4 @@ echo "📋 Generating ports list..."
 echo "✅ Access Point '$SSID' is live!"
 echo "🔐 Security Mode: $SECURITY_MODE"
 echo "🌐 Web Portal: http://192.168.50.1:8000"
+echo "🔌 DHCP Range: $DHCP_RANGE"

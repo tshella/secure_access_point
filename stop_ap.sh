@@ -54,6 +54,12 @@ nmcli device set "$IFACE" managed yes
 nmcli radio wifi on
 nmcli device wifi rescan 2>/dev/null || true
 
+# Remove any lingering IP addresses
+if ip addr show "$IFACE" | grep -q "192.168.50.1"; then
+    echo "🧹 Cleaning leftover IP addresses..."
+    sudo ip addr flush dev "$IFACE"
+fi
+
 # === NETWORK RESTORATION ===
 echo "🔄 Restarting NetworkManager to restore networking..."
 sudo systemctl restart NetworkManager
