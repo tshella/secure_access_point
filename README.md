@@ -1,203 +1,190 @@
-Secure Access Point Setup with Captive Portal
-Overview
+# Secure Access Point with Captive Portal
 
-This project transforms your Linux laptop into a secure Wi-Fi access point with a captive portal that displays active services. It's ideal for:
+## ✨ Overview
 
-    Security researchers demonstrating vulnerabilities
+This project transforms your **Linux laptop** into a secure **Wi-Fi Access Point** with a built-in **captive portal** that dynamically lists all open services. Ideal for:
 
-    IT professionals creating isolated testing environments
+* 🔐 **Security researchers** demonstrating vulnerabilities
+* 📈 **IT professionals** building isolated testing zones
+* 📄 **Developers** testing mobile apps locally
+* 🎓 **Educators** running offline workshops
+* 🏠 **Field technicians** for on-site diagnostics
 
-    Developers testing mobile applications
+---
 
-    Educators running workshops with device connectivity
+## 🔹 Key Features
 
-    Field technicians providing on-site diagnostics
+* **Enterprise-Grade Security**: WPA3-SAE with fallback to WPA2-PSK (AES)
+* **Captive Portal**: Redirects all clients to local web interface
+* **Port Scanner**: Lists all open ports and active services
+* **Docker-Aware**: Preserves and restores bridge interfaces
+* **One-Line Management**: `make up`, `make down`, `make status`
 
-Key Features
+---
 
-    Enterprise-grade Security: WPA3 encryption with automatic fallback to WPA2
+## 📄 Requirements
 
-    Captive Portal: Auto-redirects to service directory
+* Linux laptop with Wi-Fi card supporting AP mode
+* `sudo` access
+* `NetworkManager`, `dnsmasq`, `python3`
 
-    Service Discovery: Shows all open ports on the host machine
+---
 
-    Docker Integration: Preserves and restores container networks
+## 🚀 Installation Guide
 
-    Easy Management: Simple start/stop commands
+### Ubuntu / Debian
 
-Requirements
-
-    Linux laptop with wireless card supporting AP mode
-
-    Root/sudo access
-
-    Python 3
-
-    NetworkManager
-
-    dnsmasq
-
-Installation Guide
-Ubuntu/Debian
-bash
-
-# Install dependencies
+```bash
 sudo apt update
 sudo apt install -y network-manager dnsmasq python3 python3-pip
 
-# Clone repository
 git clone https://github.com/yourusername/secure-access-point.git
 cd secure-access-point
-
-# Make scripts executable
 chmod +x setup_secure_ap.sh stop_ap.sh generate_ports.sh
+```
 
-Fedora/CentOS
-bash
+### Fedora / CentOS
 
-# Install dependencies
+```bash
 sudo dnf install -y NetworkManager dnsmasq python3 python3-pip
 
-# Clone repository
 git clone https://github.com/yourusername/secure-access-point.git
 cd secure-access-point
-
-# Make scripts executable
 chmod +x setup_secure_ap.sh stop_ap.sh generate_ports.sh
+```
 
-Configuration
+---
 
-Edit setup_secure_ap.sh with your preferred settings:
-bash
+## 🔧 Configuration
 
-# === CONFIG ===
-IFACE="wlo1"                  # Your wireless interface
-SSID="TshellaTechnologies"     # Network name
-PASSPHRASE="StrongPassword123" # Min 8 characters
-IP_ADDR="192.168.50.1/24"     # Access Point IP
-WEB_DIR="$(pwd)"              # Web portal directory
+Edit `setup_secure_ap.sh`:
 
-Usage
-Start Access Point
-bash
+```bash
+IFACE="wlo1"                     # Wi-Fi interface name
+SSID="TshellaTechnologies"      # Hotspot SSID
+PASSPHRASE="StrongPassword123"  # WPA2/WPA3 passphrase
+IP_ADDR="192.168.50.1/24"       # Static IP
+WEB_DIR="$(pwd)"                # Web files directory
+```
 
+---
+
+## 🌐 Usage
+
+### Start Access Point
+
+```bash
 sudo ./setup_secure_ap.sh
+```
 
-The portal will be available at: http://192.168.50.1:8000
-Stop Access Point
-bash
+Then browse to: [http://192.168.50.1:8000](http://192.168.50.1:8000)
 
+### Stop Access Point
+
+```bash
 sudo ./stop_ap.sh
+```
 
-Check Status
-bash
+### Check Status
 
-make status  # Shows active connections and bridge status
+```bash
+make status
+```
 
-Practical Applications
-1. Security Demonstrations
+---
 
-    Create a "honeypot" network to demonstrate attack vectors
+## 🔹 Practical Applications
 
-    Show live port scanning results to educate users
+### 1. Security Demos
 
-2. Development & Testing
+* Create honeypot APs
+* Show live vulnerability scanning
 
-    Test mobile apps on isolated networks
+### 2. Dev/Test Environments
 
-    Simulate captive portal behavior for hotel/airport WiFi
+* Simulate captive portals (e.g. airports, hotels)
+* Offline testing of mobile/web apps
 
-    Debug network services in controlled environments
+### 3. Field Diagnostics
 
-3. Field Diagnostics
+* Host manuals/firmware for technicians
+* Provide diagnostics without internet
 
-    Provide technicians with device status portal
+### 4. Education & Workshops
 
-    Display QR codes for service documentation
+* Distribute resources offline
+* Teach IoT/programming/networking
 
-    Offer temporary access to equipment manuals
+### 5. IoT Prototyping
 
-4. Education & Workshops
+* Safely test devices before WAN exposure
+* Analyze device traffic in isolation
 
-    Run programming workshops without internet dependency
+---
 
-    Create lab environments with custom web resources
+## 🔹 Customization Options
 
-    Distribute materials via local web server
+| Feature             | How to Customize                                    |
+| ------------------- | --------------------------------------------------- |
+| **Branding**        | Edit `index.html` for logo, colors, content         |
+| **Ports**           | Modify `generate_ports.sh` to filter or enrich data |
+| **DNS**             | Edit `dnsmasq` config block in `setup_secure_ap.sh` |
+| **Auth**            | Add HTTP Basic Auth to Python web server            |
+| **Port Forwarding** | Expose containers/services via `iptables`           |
 
-5. IoT Prototyping
+---
 
-    Connect IoT devices to a controlled network
+## ⚠️ Troubleshooting
 
-    Monitor device communication patterns
+| Issue                | Solution                                            |
+| -------------------- | --------------------------------------------------- |
+| "Weak Security"      | Use strong password (12+ characters with symbols)   |
+| Port 53 conflict     | `sudo systemctl stop systemd-resolved` before start |
+| Docker bridges lost  | Run `sudo systemctl restart docker` after stop      |
+| AP fails to activate | Use WPA2 fallback by forcing `SECURITY_MODE=wpa2`   |
+| Can't detect card    | Check `iw list` for AP support                      |
 
-    Test firmware updates locally
+### Diagnostic Commands
 
-Customization Options
+```bash
+# View supported AP modes
+iw list | grep -A10 "Supported interface modes"
 
-    Branded Portal: Edit index.html to match your organization's branding
-
-    Service Information: Modify generate_ports.sh to display custom service info
-
-    Advanced DNS: Edit DNSMasq config in setup_secure_ap.sh for:
-
-        Domain blackholing
-
-        Custom DNS records
-
-        Ad blocking
-
-    Authentication: Add password protection to the Python web server
-
-    Port Forwarding: Extend scripts to expose container services
-
-Troubleshooting
-Common Issues & Solutions
-Issue	Solution
-"Weak Security" warning	Ensure your password is 12+ characters with special characters
-dnsmasq port 53 conflict	Run sudo systemctl stop systemd-resolved before starting
-Docker bridges not restoring	Run sudo systemctl restart docker after stopping AP
-Can't connect to AP	Check wireless card supports AP mode with iw list
-"Activation failed" errors	Try WPA2-only mode by setting SECURITY_MODE="wpa2"
-Diagnostic Commands
-bash
-
-# Check wireless capabilities
-iw list | grep "Supported interface modes" -A 10
-
-# View NetworkManager logs
+# System logs for NetworkManager
 journalctl -u NetworkManager -b
 
-# Check dnsmasq operation
-sudo systemctl status dnsmasq
-
-# Verify port status
+# View open ports
 ss -tuln
 
-Security Considerations
+# Check dnsmasq status
+sudo systemctl status dnsmasq
+```
 
-    Always use strong passwords (12+ characters, mixed types)
+---
 
-    Change default IP range if on corporate networks
+## 🔒 Security Best Practices
 
-    Regularly update dependencies: sudo apt upgrade
+* Use WPA3 or strong WPA2 passwords
+* Regularly rotate credentials
+* Use unique subnets (avoid 192.168.0.0/24 on corp LANs)
+* Disable AP when idle
+* Review DNS configurations regularly
 
-    Disable when not in use
+---
 
-    Review DNSMasq configuration for unintended forwards
+## 📅 License
 
-License
+MIT License. See [LICENSE](LICENSE) file.
 
-This project is licensed under the MIT License - see the LICENSE file for details.
-Contribution
+---
 
-Contributions are welcome! Please submit PRs for:
+## 📚 Contributing
 
-    Improved platform compatibility
+Pull Requests welcome for:
 
-    Additional security features
+* Cross-platform compatibility
+* Additional features (SSL, Auth)
+* Performance improvements
+* Docker or Flatpak packaging
 
-    Enhanced portal functionality
-
-    Better Docker/container integration
-
+> Designed by Manaka Anthony Raphasha with ❤️ for mobility, privacy, and rapid deployments.
