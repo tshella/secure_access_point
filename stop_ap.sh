@@ -119,14 +119,6 @@ if [ "$DOCKER_WAS_ACTIVE" = "active" ]; then
                 sudo nmcli con add type bridge ifname "$BRIDGE_DEV" con-name "$CON_NAME" 2>/dev/null || true
                 sudo nmcli con up "$CON_NAME" 2>/dev/null || true
             fi
-            
-            # Verify connection
-            CON_STATE=$(sudo nmcli -t -f NAME,STATE con show "$CON_NAME" 2>/dev/null | cut -d: -f2)
-            if [[ "$CON_STATE" == "activated" ]]; then
-                echo "    ✅ $CON_NAME reconnected successfully"
-            else
-                echo "    ⚠️ $CON_NAME still disconnected"
-            fi
         done <<< "$DOCKER_BRIDGES"
     fi
 fi
